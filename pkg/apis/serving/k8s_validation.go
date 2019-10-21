@@ -27,6 +27,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
+	valfield "k8s.io/apimachinery/pkg/util/validation/field"
+	resourcevalidation "k8s.io/kubernetes/pkg/apis/core/v1/validation"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/profiling"
 	"knative.dev/serving/pkg/apis/networking"
@@ -264,6 +266,15 @@ func ValidatePodSpec(ps corev1.PodSpec) *apis.FieldError {
 			errs = errs.Also(apis.ErrInvalidValue("serviceAccountName", ps.ServiceAccountName))
 		}
 	}
+	resourceErrs := resourcevalidation.ValidateResourceRequirements(&ps.Containers[0].Resources, valfield.NewPath("resources"))
+	if len(resourceErrs) > 0 {
+		errs = errs.Also(&apis.FieldError{
+			Message: "Invalid resource requirements",
+			Details: resourceErrs.ToAggregate().Error(),
+			Paths:   []string{"resources"},
+		})
+	}
+
 	return errs
 }
 

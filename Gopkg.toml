@@ -68,6 +68,10 @@ required = [
   version = "kubernetes-1.15.3"
 
 [[override]]
+  name = "k8s.io/kubernetes"
+  version = "kubernetes-1.13"
+
+[[override]]
   name = "k8s.io/client-go"
   version = "kubernetes-1.15.3"
 
