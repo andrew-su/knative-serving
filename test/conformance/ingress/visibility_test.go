@@ -33,11 +33,13 @@ func TestVisibility(t *testing.T) {
 	t.Parallel()
 	clients := test.Setup(t)
 
+	svcName := test.ObjectNameForTest(t)
+
 	// Create the private backend
 	name, port, cancel := CreateRuntimeService(t, clients, networking.ServicePortNameHTTP1)
 	defer cancel()
 
-	privateHostName := "private." + test.ServingNamespace + ".svc.cluster.local"
+	privateHostName := fmt.Sprintf("%s.%s.%s", svcName, test.ServingNamespace, "svc.cluster.local")
 	ingress, client, cancel := CreateIngressReady(t, clients, v1alpha1.IngressSpec{
 		Rules: []v1alpha1.IngressRule{{
 			Hosts:      []string{privateHostName},
@@ -64,7 +66,7 @@ func TestVisibility(t *testing.T) {
 	proxyName, proxyPort, cancel := CreateProxyService(t, clients, privateHostName, loadbalancerAddress)
 	defer cancel()
 
-	publicHostName := "publicproxy.example.com"
+	publicHostName := fmt.Sprintf("%s.%s", svcName, "example.com")
 	_, client, cancel = CreateIngressReady(t, clients, v1alpha1.IngressSpec{
 		Rules: []v1alpha1.IngressRule{{
 			Hosts:      []string{publicHostName},
