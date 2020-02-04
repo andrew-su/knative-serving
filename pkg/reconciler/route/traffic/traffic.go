@@ -21,16 +21,18 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/util/sets"
 
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	"knative.dev/pkg/ptr"
 	net "knative.dev/serving/pkg/apis/networking"
+	netv1alpha1 "knative.dev/serving/pkg/apis/networking/v1alpha1"
 	"knative.dev/serving/pkg/apis/serving"
 	v1 "knative.dev/serving/pkg/apis/serving/v1"
 	"knative.dev/serving/pkg/apis/serving/v1alpha1"
 	listers "knative.dev/serving/pkg/client/listers/serving/v1alpha1"
 	"knative.dev/serving/pkg/reconciler/route/domains"
 	"knative.dev/serving/pkg/reconciler/route/resources/labels"
+	"knative.dev/serving/pkg/reconciler/route/visibility"
 )
 
 const (
@@ -59,6 +61,9 @@ type Config struct {
 	// realize a route's setting.
 	Targets map[string]RevisionTargets
 
+	// Visibility of the traffic targets.
+	Visibility map[string]netv1alpha1.IngressVisibility
+
 	// A list traffic targets, flattened to the Revision level.  This
 	// is used to populate the Route.Status.TrafficTarget field.
 	revisionTargets RevisionTargets
@@ -77,15 +82,34 @@ type Config struct {
 // are keyed by name for easy access.
 //
 // In the case that some target is missing, an error of type TargetError will be returned.
-func BuildTrafficConfiguration(configLister listers.ConfigurationLister, revLister listers.RevisionLister,
+func BuildTrafficConfiguration(ctx context.Context,
+	configLister listers.ConfigurationLister, revLister listers.RevisionLister, serviceLister corev1listers.ServiceLister,
 	r *v1alpha1.Route) (*Config, error) {
-	builder := newBuilder(configLister, revLister, r.Namespace, len(r.Spec.Traffic))
+	builder := newBuilder(configLister, revLister, serviceLister, r.Namespace, len(r.Spec.Traffic))
 	builder.applySpecTraffic(r.Spec.Traffic)
-	return builder.build()
+	t, err := builder.build()
+	if err != nil {
+		return nil, err
+	}
+	// Update with visibility setting.
+	visibility, err := visibility.NewConfig(serviceLister).ForRoute(ctx, r, t.TrafficNames())
+	if err != nil {
+		return nil, err
+	}
+	t.Visibility = visibility
+	return t, nil
+}
+
+func (t *Config) TrafficNames() []string {
+	names := []string{}
+	for name := range t.Targets {
+		names = append(names, name)
+	}
+	return names
 }
 
 // GetRevisionTrafficTargets returns a list of TrafficTarget flattened to the RevisionName, and having ConfigurationName cleared out.
-func (t *Config) GetRevisionTrafficTargets(ctx context.Context, r *v1alpha1.Route, clusterLocalService sets.String) ([]v1alpha1.TrafficTarget, error) {
+func (t *Config) GetRevisionTrafficTargets(ctx context.Context, r *v1alpha1.Route) ([]v1alpha1.TrafficTarget, error) {
 	results := make([]v1alpha1.TrafficTarget, len(t.revisionTargets))
 	for i, tt := range t.revisionTargets {
 		var pp *int64
@@ -111,7 +135,7 @@ func (t *Config) GetRevisionTrafficTargets(ctx context.Context, r *v1alpha1.Rout
 				return nil, err
 			}
 
-			labels.SetVisibility(meta, clusterLocalService.Has(hostname))
+			labels.SetVisibility(meta, t.Visibility[tt.Tag] == netv1alpha1.IngressVisibilityClusterLocal)
 
 			// http is currently the only supported scheme
 			fullDomain, err := domains.DomainNameFromTemplate(ctx, *meta, hostname)
@@ -125,9 +149,10 @@ func (t *Config) GetRevisionTrafficTargets(ctx context.Context, r *v1alpha1.Rout
 }
 
 type configBuilder struct {
-	configLister listers.ConfigurationLister
-	revLister    listers.RevisionLister
-	namespace    string
+	configLister  listers.ConfigurationLister
+	revLister     listers.RevisionLister
+	serviceLister corev1listers.ServiceLister
+	namespace     string
 
 	// targets is a grouping of traffic targets serving the same origin.
 	targets map[string]RevisionTargets
@@ -149,11 +174,12 @@ type configBuilder struct {
 }
 
 func newBuilder(
-	configLister listers.ConfigurationLister, revLister listers.RevisionLister,
+	configLister listers.ConfigurationLister, revLister listers.RevisionLister, serviceLister corev1listers.ServiceLister,
 	namespace string, trafficSize int) *configBuilder {
 	return &configBuilder{
 		configLister:    configLister,
 		revLister:       revLister,
+		serviceLister:   serviceLister,
 		namespace:       namespace,
 		targets:         make(map[string]RevisionTargets),
 		revisionTargets: make(RevisionTargets, 0, trafficSize),

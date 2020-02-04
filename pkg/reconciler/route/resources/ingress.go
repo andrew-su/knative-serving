@@ -23,12 +23,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/apimachinery/pkg/util/sets"
 
 	"knative.dev/pkg/kmeta"
 	"knative.dev/serving/pkg/activator"
 	"knative.dev/serving/pkg/apis/networking"
 	"knative.dev/serving/pkg/apis/networking/v1alpha1"
+	netv1alpha1 "knative.dev/serving/pkg/apis/networking/v1alpha1"
 	"knative.dev/serving/pkg/apis/serving"
 	servingv1alpha1 "knative.dev/serving/pkg/apis/serving/v1alpha1"
 	"knative.dev/serving/pkg/reconciler/route/domains"
@@ -54,11 +54,10 @@ func MakeIngress(
 	r *servingv1alpha1.Route,
 	tc *traffic.Config,
 	tls []v1alpha1.IngressTLS,
-	clusterLocalServices sets.String,
 	ingressClass string,
 	acmeChallenges ...v1alpha1.HTTP01Challenge,
 ) (*v1alpha1.Ingress, error) {
-	spec, err := MakeIngressSpec(ctx, r, tls, clusterLocalServices, tc.Targets, acmeChallenges...)
+	spec, err := MakeIngressSpec(ctx, r, tls, tc.Targets, tc.Visibility, acmeChallenges...)
 	if err != nil {
 		return nil, err
 	}
@@ -86,8 +85,8 @@ func MakeIngressSpec(
 	ctx context.Context,
 	r *servingv1alpha1.Route,
 	tls []v1alpha1.IngressTLS,
-	clusterLocalServices sets.String,
 	targets map[string]traffic.RevisionTargets,
+	visibility map[string]netv1alpha1.IngressVisibility,
 	acmeChallenges ...v1alpha1.HTTP01Challenge,
 ) (v1alpha1.IngressSpec, error) {
 	// Domain should have been specified in route status
@@ -103,12 +102,7 @@ func MakeIngressSpec(
 	challengeHosts := getChallengeHosts(acmeChallenges)
 
 	for _, name := range names {
-		serviceDomain, err := domains.HostnameFromTemplate(ctx, r.Name, name)
-		if err != nil {
-			return v1alpha1.IngressSpec{}, err
-		}
-
-		isClusterLocal := clusterLocalServices.Has(serviceDomain)
+		isClusterLocal := visibility[name] == netv1alpha1.IngressVisibilityClusterLocal
 
 		routeDomains, err := routeDomains(ctx, name, r, isClusterLocal)
 		if err != nil {
@@ -121,20 +115,9 @@ func MakeIngressSpec(
 		rules = append(rules, rule)
 	}
 
-	defaultDomain, err := domains.HostnameFromTemplate(ctx, r.Name, "")
-	if err != nil {
-		return v1alpha1.IngressSpec{}, err
-	}
-
-	visibility := v1alpha1.IngressVisibilityExternalIP
-	if clusterLocalServices.Has(defaultDomain) {
-		visibility = v1alpha1.IngressVisibilityClusterLocal
-	}
-
 	return v1alpha1.IngressSpec{
-		Rules:      rules,
-		Visibility: visibility,
-		TLS:        tls,
+		Rules: rules,
+		TLS:   tls,
 	}, nil
 }
 
