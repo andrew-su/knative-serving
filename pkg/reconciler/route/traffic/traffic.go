@@ -22,7 +22,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	corev1listers "k8s.io/client-go/listers/core/v1"
 	"knative.dev/pkg/ptr"
 	net "knative.dev/serving/pkg/apis/networking"
 	netv1alpha1 "knative.dev/serving/pkg/apis/networking/v1alpha1"
@@ -32,7 +31,6 @@ import (
 	listers "knative.dev/serving/pkg/client/listers/serving/v1alpha1"
 	"knative.dev/serving/pkg/reconciler/route/domains"
 	"knative.dev/serving/pkg/reconciler/route/resources/labels"
-	"knative.dev/serving/pkg/reconciler/route/visibility"
 )
 
 const (
@@ -82,21 +80,14 @@ type Config struct {
 // are keyed by name for easy access.
 //
 // In the case that some target is missing, an error of type TargetError will be returned.
-func BuildTrafficConfiguration(ctx context.Context,
-	configLister listers.ConfigurationLister, revLister listers.RevisionLister, serviceLister corev1listers.ServiceLister,
+func BuildTrafficConfiguration(configLister listers.ConfigurationLister, revLister listers.RevisionLister,
 	r *v1alpha1.Route) (*Config, error) {
-	builder := newBuilder(configLister, revLister, serviceLister, r.Namespace, len(r.Spec.Traffic))
+	builder := newBuilder(configLister, revLister, r.Namespace, len(r.Spec.Traffic))
 	builder.applySpecTraffic(r.Spec.Traffic)
 	t, err := builder.build()
 	if err != nil {
 		return nil, err
 	}
-	// Update with visibility setting.
-	visibility, err := visibility.NewConfig(serviceLister).ForRoute(ctx, r, t.TrafficNames())
-	if err != nil {
-		return nil, err
-	}
-	t.Visibility = visibility
 	return t, nil
 }
 
@@ -149,10 +140,9 @@ func (t *Config) GetRevisionTrafficTargets(ctx context.Context, r *v1alpha1.Rout
 }
 
 type configBuilder struct {
-	configLister  listers.ConfigurationLister
-	revLister     listers.RevisionLister
-	serviceLister corev1listers.ServiceLister
-	namespace     string
+	configLister listers.ConfigurationLister
+	revLister    listers.RevisionLister
+	namespace    string
 
 	// targets is a grouping of traffic targets serving the same origin.
 	targets map[string]RevisionTargets
@@ -174,12 +164,11 @@ type configBuilder struct {
 }
 
 func newBuilder(
-	configLister listers.ConfigurationLister, revLister listers.RevisionLister, serviceLister corev1listers.ServiceLister,
+	configLister listers.ConfigurationLister, revLister listers.RevisionLister,
 	namespace string, trafficSize int) *configBuilder {
 	return &configBuilder{
 		configLister:    configLister,
 		revLister:       revLister,
-		serviceLister:   serviceLister,
 		namespace:       namespace,
 		targets:         make(map[string]RevisionTargets),
 		revisionTargets: make(RevisionTargets, 0, trafficSize),

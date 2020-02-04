@@ -57,6 +57,7 @@ import (
 	"knative.dev/serving/pkg/reconciler/route/resources/labels"
 	resourcenames "knative.dev/serving/pkg/reconciler/route/resources/names"
 	"knative.dev/serving/pkg/reconciler/route/traffic"
+	"knative.dev/serving/pkg/reconciler/route/visibility"
 )
 
 // routeFinalizer is the name that we put into the resource finalizer list, e.g.
@@ -386,10 +387,16 @@ func (c *Reconciler) reconcileDeletion(ctx context.Context, r *v1alpha1.Route) e
 // mark AllTrafficAssigned = False, with a message referring to one of the missing target.
 func (c *Reconciler) configureTraffic(ctx context.Context, r *v1alpha1.Route) (*traffic.Config, error) {
 	logger := logging.FromContext(ctx)
-	t, err := traffic.BuildTrafficConfiguration(ctx, c.configurationLister, c.revisionLister, c.serviceLister, r)
+	t, err := traffic.BuildTrafficConfiguration(c.configurationLister, c.revisionLister, r)
 	if t == nil {
 		return nil, err
 	}
+	// Update with visibility setting.
+	visibility, err := visibility.NewConfig(c.serviceLister).ForRoute(ctx, r, t.TrafficNames())
+	if err != nil {
+		return nil, err
+	}
+	t.Visibility = visibility
 	// Tell our trackers to reconcile Route whenever the things referred to by our
 	// traffic stanza change. We also track missing targets since there may be
 	// race conditions were routes are reconciled before their targets appear
