@@ -50,7 +50,7 @@ func GetAllDomainsAndTags(ctx context.Context, r *v1alpha1.Route, names []string
 			return nil, err
 		}
 
-		labels.SetVisibility(meta, visibility[hostname] == netv1alpha1.IngressVisibilityClusterLocal)
+		labels.SetVisibility(meta, visibility[name] == netv1alpha1.IngressVisibilityClusterLocal)
 
 		subDomain, err := DomainNameFromTemplate(ctx, *meta, hostname)
 		if err != nil {
