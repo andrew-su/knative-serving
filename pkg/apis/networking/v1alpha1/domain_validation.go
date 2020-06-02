@@ -19,29 +19,27 @@ package v1alpha1
 import (
 	"context"
 
-	// "k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"knative.dev/pkg/apis"
 )
 
 // Validate inspects and validates Ingress object.
 func (d *Domain) Validate(ctx context.Context) *apis.FieldError {
-	return nil
-	// return d.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec")
+	return d.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec")
 }
 
 // Validate inspects and validates IngressSpec object.
 func (spec *DomainSpec) Validate(ctx context.Context) *apis.FieldError {
-	return nil
-	// // Spec must not be empty.
-	// if equality.Semantic.DeepEqual(spec, &DomainSpec{}) {
-	// 	return apis.ErrMissingField(apis.CurrentField)
-	// }
-	// var all *apis.FieldError
-	// if spec.IngressClass == "" {
-	// 	all = all.Also(apis.ErrMissingField("IngressClass"))
-	// }
-	// if len(spec.LoadBalancers) == 0 {
-	// 	all = all.Also(apis.ErrMissingField("LoadBalancers"))
-	// }
-	// return all
+	// Spec must not be empty.
+	if equality.Semantic.DeepEqual(spec, &DomainSpec{}) {
+		return apis.ErrMissingField(apis.CurrentField)
+	}
+	var all *apis.FieldError
+	if spec.IngressClass == "" {
+		all = all.Also(apis.ErrMissingField("IngressClass"))
+	}
+	if len(spec.LoadBalancers) == 0 {
+		all = all.Also(apis.ErrMissingField("LoadBalancers"))
+	}
+	return all
 }
