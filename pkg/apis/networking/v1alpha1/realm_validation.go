@@ -19,21 +19,16 @@ package v1alpha1
 import (
 	"context"
 
-	"k8s.io/apimachinery/pkg/api/equality"
 	"knative.dev/pkg/apis"
 )
 
-// Validate inspects and validates Ingress object.
+// Validate inspects and validates Realm object.
 func (r *Realm) Validate(ctx context.Context) *apis.FieldError {
 	return r.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec")
 }
 
-// Validate inspects and validates IngressSpec object.
+// Validate inspects and validates RealmSpec object.
 func (spec *RealmSpec) Validate(ctx context.Context) *apis.FieldError {
-	// Spec must not be empty.
-	if equality.Semantic.DeepEqual(spec, &RealmSpec{}) {
-		return apis.ErrMissingField(apis.CurrentField)
-	}
 	var all *apis.FieldError
 	if spec.External == "" && spec.Cluster == "" {
 		all = all.Also(apis.ErrMissingOneOf("External", "Cluster"))

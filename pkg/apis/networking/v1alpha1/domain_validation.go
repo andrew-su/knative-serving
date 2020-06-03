@@ -23,12 +23,12 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-// Validate inspects and validates Ingress object.
+// Validate inspects and validates Domain object.
 func (d *Domain) Validate(ctx context.Context) *apis.FieldError {
 	return d.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec")
 }
 
-// Validate inspects and validates IngressSpec object.
+// Validate inspects and validates DomainSpec object.
 func (spec *DomainSpec) Validate(ctx context.Context) *apis.FieldError {
 	// Spec must not be empty.
 	if equality.Semantic.DeepEqual(spec, &DomainSpec{}) {
