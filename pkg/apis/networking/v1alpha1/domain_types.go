@@ -86,20 +86,20 @@ type DomainList struct {
 type DomainSpec struct {
 	// IngressClass tells what Ingress class annotation to use for Routes associated
 	// with this Realm.
-	IngressClass string
+	IngressClass string `json:"ingressClass"`
 
 	// SuffixDomain specifies the domain suffix to be used. This field replaces the
 	// existing config-domain ConfigMap.  Internal Domains can omit this, in
 	// which case we will default to the cluster suffix.
 	// +optional
-	Suffix string
+	Suffix string `json:"suffix,omitempty"`
 
 	// LoadBalancers provide addresses (IP address, domains) of the load balancers
 	// associated with this Domain.  This is used in automatic DNS provisioning like
 	// configuration of magic DNS or creating ExternalName services for cluster-local
 	// access.
 	// NOTE: LoadBalancerReference is similar to LoadBalancerIngressStatus.
-	LoadBalancers []LoadBalancerReference
+	LoadBalancers []LoadBalancerReference `json:"loadBalancers"`
 
 	// Config allows KIngress implementations to add additional information needed
 	// for configuring the proxies associated with this Domain.  For examples, in our
@@ -107,7 +107,7 @@ type DomainSpec struct {
 	// associated with this Domain. This could be a reference of a ConfigMap owned
 	// by the implementation as well.
 	// +optional
-	Config []map[string]string
+	Config []map[string]string `json:"config,omitempty"`
 }
 
 // LoadBalancerIngressStatus represents the status of a load-balancer ingress point:
