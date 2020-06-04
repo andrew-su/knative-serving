@@ -98,8 +98,7 @@ type DomainSpec struct {
 	// associated with this Domain.  This is used in automatic DNS provisioning like
 	// configuration of magic DNS or creating ExternalName services for cluster-local
 	// access.
-	// NOTE: LoadBalancerReference is similar to LoadBalancerIngressStatus.
-	LoadBalancers []LoadBalancerReference `json:"loadBalancers"`
+	LoadBalancers []LoadBalancerIngressStatus `json:"loadBalancers"`
 
 	// Config allows KIngress implementations to add additional information needed
 	// for configuring the proxies associated with this Domain.
@@ -108,32 +107,6 @@ type DomainSpec struct {
 	// owned by the implementation as well.
 	// +optional
 	Config []map[string]string `json:"config,omitempty"`
-}
-
-// LoadBalancerIngressStatus represents the status of a load-balancer ingress point:
-// traffic intended for the service should be sent to an ingress point.
-type LoadBalancerReference struct {
-	// IP is set for load-balancer ingress points that are IP based
-	// (typically GCE or OpenStack load-balancers)
-	// +optional
-	IP string `json:"ip,omitempty"`
-
-	// Domain is set for load-balancer ingress points that are DNS based
-	// (typically AWS load-balancers)
-	// +optional
-	Domain string `json:"domain,omitempty"`
-
-	// DomainInternal is set if there is a cluster-local DNS name to access the Ingress.
-	//
-	// NOTE: This differs from K8s Ingress, since we also desire to have a cluster-local
-	//       DNS name to allow routing in case of not having a mesh.
-	//
-	// +optional
-	DomainInternal string `json:"domainInternal,omitempty"`
-
-	// MeshOnly is set if the Ingress is only load-balanced through a Service mesh.
-	// +optional
-	MeshOnly bool `json:"meshOnly,omitempty"`
 }
 
 // DomainStatus will reflect Ready=True if the implementation accepts the Domain data

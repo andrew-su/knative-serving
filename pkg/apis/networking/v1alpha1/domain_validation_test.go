@@ -34,30 +34,29 @@ func TestDomainSpecValidation(t *testing.T) {
 		name: "all good",
 		ds: DomainSpec{
 			IngressClass: "test-ingress-class",
-			LoadBalancers: []LoadBalancerReference{{
+			LoadBalancers: []LoadBalancerIngressStatus{{
 				Domain: "test-domain",
 			}},
 		},
-	},
-		{
-			name: "no spec",
-			ds:   DomainSpec{},
-			want: apis.ErrMissingField("spec"),
-		}, {
-			name: "ingress class isnt specified",
-			ds: DomainSpec{
-				LoadBalancers: []LoadBalancerReference{{
-					Domain: "test-domain",
-				}},
-			},
-			want: apis.ErrMissingField("spec.IngressClass"),
-		}, {
-			name: "loadbalacers arent specified",
-			ds: DomainSpec{
-				IngressClass: "test-ingress-class",
-			},
-			want: apis.ErrMissingField("spec.LoadBalancers"),
-		}}
+	}, {
+		name: "no spec",
+		ds:   DomainSpec{},
+		want: apis.ErrMissingField("spec"),
+	}, {
+		name: "ingress class isnt specified",
+		ds: DomainSpec{
+			LoadBalancers: []LoadBalancerIngressStatus{{
+				Domain: "test-domain",
+			}},
+		},
+		want: apis.ErrMissingField("spec.IngressClass"),
+	}, {
+		name: "loadbalacers arent specified",
+		ds: DomainSpec{
+			IngressClass: "test-ingress-class",
+		},
+		want: apis.ErrMissingField("spec.LoadBalancers"),
+	}}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
