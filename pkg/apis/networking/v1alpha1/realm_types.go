@@ -36,24 +36,24 @@ type Realm struct {
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// Spec is the desired state of the Ingress.
+	// Spec is the desired state of the Realm.
 	// More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#spec-and-status
 	// +optional
 	Spec RealmSpec `json:"spec,omitempty"`
 
-	// Status is the current state of the Ingress.
+	// Status is the current state of the Realm.
 	// More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#spec-and-status
 	// +optional
 	Status RealmStatus `json:"status,omitempty"`
 }
 
-// Verify that Ingress adheres to the appropriate interfaces.
+// Verify that Realm adheres to the appropriate interfaces.
 var (
-	// Check that Ingress may be validated and defaulted.
+	// Check that Realm may be validated and defaulted.
 	_ apis.Validatable = (*Realm)(nil)
 	_ apis.Defaultable = (*Realm)(nil)
 
-	// Check that we can create OwnerReferences to a Ingress.
+	// Check that we can create OwnerReferences to a Realm.
 	_ kmeta.OwnerRefable = (*Realm)(nil)
 
 	// Check that the type conforms to the duck Knative Resource shape.
@@ -62,7 +62,7 @@ var (
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// IngressList is a collection of Ingress objects.
+// RealmList is a collection of Realm objects.
 type RealmList struct {
 	metav1.TypeMeta `json:",inline"`
 	// Standard object metadata.
@@ -70,19 +70,19 @@ type RealmList struct {
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	// Items is the list of Ingress objects.
+	// Items is the list of Realm objects.
 	Items []Realm `json:"items"`
 }
 
-// RealmSpec defines the specifications of a Realm.  Realms specify an internal and external
-// Domain, but disallow arbitrary combinations.  Operators can
-// create combinations of Domains that makes sense for their clusters, and developers can
-// only switch between these predefined Realms.
+// RealmSpec defines the specifications of a Realm.
+// Realms specify an internal and external Domain, but disallow arbitrary combinations.
+// Operators can create combinations of Domains that makes sense for their clusters,
+// and developers can only switch between these predefined Realms.
 //
-// Currently each Realm can have only two Domains.  That fits well with the way we assign
-// Route.Status.URL and Route.Status.Domain.
-//
+// Conditions: Currently each Realm can have only two Domains.
+// That fits well with the way we assign Route.Status.URL and Route.Status.Domain.
 // All Domain in the same Realm must share the same ingress class annotation.
+
 type RealmSpec struct {
 	// External contains the name of the Domain resource corresponding with traffic
 	// originating from outside of the cluster.  Could be omitted for a Realm without
@@ -103,7 +103,7 @@ type RealmStatus struct {
 	duckv1.Status `json:",inline"`
 }
 
-// GetStatus retrieves the status of the Ingress. Implements the KRShaped interface.
+// GetStatus retrieves the status of the Realm. Implements the KRShaped interface.
 func (t *Realm) GetStatus() *duckv1.Status {
 	return &t.Status.Status
 }

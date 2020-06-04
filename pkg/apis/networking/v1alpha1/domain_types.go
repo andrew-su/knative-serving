@@ -36,24 +36,24 @@ type Domain struct {
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// Spec is the desired state of the Ingress.
+	// Spec is the desired state of the Domain.
 	// More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#spec-and-status
 	// +optional
 	Spec DomainSpec `json:"spec,omitempty"`
 
-	// Status is the current state of the Ingress.
+	// Status is the current state of the Domain.
 	// More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#spec-and-status
 	// +optional
 	Status DomainStatus `json:"status,omitempty"`
 }
 
-// Verify that Ingress adheres to the appropriate interfaces.
+// Verify that Domain adheres to the appropriate interfaces.
 var (
-	// Check that Ingress may be validated and defaulted.
+	// Check that Doimain may be validated and defaulted.
 	_ apis.Validatable = (*Domain)(nil)
 	_ apis.Defaultable = (*Domain)(nil)
 
-	// Check that we can create OwnerReferences to a Ingress.
+	// Check that we can create OwnerReferences to a Domain.
 	_ kmeta.OwnerRefable = (*Domain)(nil)
 
 	// Check that the type conforms to the duck Knative Resource shape.
@@ -62,7 +62,7 @@ var (
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// IngressList is a collection of Ingress objects.
+// DomainList is a collection of Domain objects.
 type DomainList struct {
 	metav1.TypeMeta `json:",inline"`
 	// Standard object metadata.
@@ -70,7 +70,7 @@ type DomainList struct {
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	// Items is the list of Ingress objects.
+	// Items is the list of Domain objects.
 	Items []Domain `json:"items"`
 }
 
@@ -88,7 +88,7 @@ type DomainSpec struct {
 	// with this Realm.
 	IngressClass string `json:"ingressClass"`
 
-	// SuffixDomain specifies the domain suffix to be used. This field replaces the
+	// Suffix specifies the domain suffix to be used. This field replaces the
 	// existing config-domain ConfigMap.  Internal Domains can omit this, in
 	// which case we will default to the cluster suffix.
 	// +optional
@@ -102,10 +102,10 @@ type DomainSpec struct {
 	LoadBalancers []LoadBalancerReference `json:"loadBalancers"`
 
 	// Config allows KIngress implementations to add additional information needed
-	// for configuring the proxies associated with this Domain.  For examples, in our
-	// Istio-based Ingress this will contains all references of Istio Gateways
-	// associated with this Domain. This could be a reference of a ConfigMap owned
-	// by the implementation as well.
+	// for configuring the proxies associated with this Domain.
+	// For examples, in our Istio-based Ingress this will contains all references of
+	// Istio Gateways associated with this Domain. This could be a reference of a ConfigMap
+	// owned by the implementation as well.
 	// +optional
 	Config []map[string]string `json:"config,omitempty"`
 }
@@ -142,7 +142,7 @@ type DomainStatus struct {
 	duckv1.Status `json:",inline"`
 }
 
-// GetStatus retrieves the status of the Ingress. Implements the KRShaped interface.
-func (t *Domain) GetStatus() *duckv1.Status {
-	return &t.Status.Status
+// GetStatus retrieves the status of the Domain. Implements the KRShaped interface.
+func (d *Domain) GetStatus() *duckv1.Status {
+	return &d.Status.Status
 }
