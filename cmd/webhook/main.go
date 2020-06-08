@@ -76,7 +76,7 @@ var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	net.SchemeGroupVersion.WithKind("Ingress"):           &net.Ingress{},
 	net.SchemeGroupVersion.WithKind("ServerlessService"): &net.ServerlessService{},
 	net.SchemeGroupVersion.WithKind("Domain"):            &net.Domain{},
-	net.SchemeGroupVersion.WithKind("Realm"):            &net.Realm{},
+	net.SchemeGroupVersion.WithKind("Realm"):             &net.Realm{},
 }
 
 var serviceValidation = validation.NewCallback(
