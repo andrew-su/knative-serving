@@ -66,6 +66,8 @@ type Reconciler struct {
 	serviceLister       corev1listers.ServiceLister
 	ingressLister       networkinglisters.IngressLister
 	certificateLister   networkinglisters.CertificateLister
+	realmLister         networkinglisters.RealmLister
+	domainLister        networkinglisters.DomainLister
 	tracker             tracker.Interface
 
 	clock system.Clock
