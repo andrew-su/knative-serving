@@ -31,6 +31,8 @@ import (
 	"knative.dev/serving/test/e2e"
 	v1test "knative.dev/serving/test/v1"
 
+	corev1 "k8s.io/api/core/v1"
+
 	. "knative.dev/serving/pkg/testing/v1"
 )
 
@@ -69,45 +71,28 @@ func sendRequest(t *testing.T, clients *test.Clients, endpoint *url.URL,
 	return nil
 }
 
-func TestRevisionTimeout(t *testing.T) {
+func TestRevisionTimeoutPodExist(t *testing.T) {
 	t.Parallel()
 	clients := test.Setup(t)
 
 	testCases := []struct {
 		name           string
-		shouldScaleTo0 bool
 		timeoutSeconds int64
 		initialSleep   time.Duration
 		sleep          time.Duration
 		expectedStatus int
 	}{{
-		name:           "when scaling up from 0 and does not exceed timeout seconds",
-		shouldScaleTo0: true,
-		timeoutSeconds: 40,
-		expectedStatus: http.StatusOK,
-	}, {
-		name:           "when scaling up from 0 and it writes first byte before timeout",
-		shouldScaleTo0: true,
-		timeoutSeconds: 40,
-		sleep:          45 * time.Second,
-		expectedStatus: http.StatusOK,
-	}, {
-		name:           "when scaling up from 0 and it does exceed timeout seconds",
-		shouldScaleTo0: true,
-		timeoutSeconds: 1, // If the pods come up faster than 1s, this test might fail.
-		expectedStatus: http.StatusGatewayTimeout,
-	}, {
-		name:           "when pods already exist, and it does not exceed timeout seconds",
+		name:           "it does not exceed timeout seconds",
 		timeoutSeconds: 10,
 		initialSleep:   2 * time.Second,
 		expectedStatus: http.StatusOK,
 	}, {
-		name:           "when pods already exist, and it does exceed timeout seconds",
+		name:           "and it does exceed timeout seconds",
 		timeoutSeconds: 10,
 		initialSleep:   12 * time.Second,
 		expectedStatus: http.StatusGatewayTimeout,
 	}, {
-		name:           "when pods already exist, and it writes first byte before timeout",
+		name:           "it writes first byte before timeout",
 		timeoutSeconds: 10,
 		expectedStatus: http.StatusOK,
 		sleep:          15 * time.Second,
@@ -131,23 +116,78 @@ func TestRevisionTimeout(t *testing.T) {
 
 			serviceURL := resources.Service.Status.URL.URL()
 
-			if tc.shouldScaleTo0 {
-				t.Log("Waiting to scale down to 0")
-				if err := e2e.WaitForScaleToZero(t, resourcenames.Deployment(resources.Revision), clients); err != nil {
-					t.Fatal("Could not scale to zero:", err)
-				}
-			} else {
-				t.Log("Probing to force at least one pod", serviceURL)
-				if _, err := pkgTest.WaitForEndpointState(
-					clients.KubeClient,
-					t.Logf,
-					serviceURL,
-					v1test.RetryingRouteInconsistency(pkgTest.IsOneOfStatusCodes(http.StatusOK, http.StatusGatewayTimeout)),
-					"WaitForSuccessfulResponse",
-					test.ServingFlags.ResolvableDomain,
-					test.AddRootCAtoTransport(t.Logf, clients, test.ServingFlags.Https)); err != nil {
-					t.Fatalf("Error probing %s: %v", serviceURL, err)
-				}
+			t.Log("Probing to force at least one pod", serviceURL)
+			if _, err := pkgTest.WaitForEndpointState(
+				clients.KubeClient,
+				t.Logf,
+				serviceURL,
+				v1test.RetryingRouteInconsistency(pkgTest.IsOneOfStatusCodes(http.StatusOK, http.StatusGatewayTimeout)),
+				"WaitForSuccessfulResponse",
+				test.ServingFlags.ResolvableDomain,
+				test.AddRootCAtoTransport(t.Logf, clients, test.ServingFlags.Https)); err != nil {
+				t.Fatalf("Error probing %s: %v", serviceURL, err)
+			}
+
+			if err := sendRequest(t, clients, serviceURL, tc.initialSleep, tc.sleep, tc.expectedStatus); err != nil {
+				t.Errorf("Failed request with intialSleep %v, sleep %v, with revision timeout %ds and expecting status %v: %v",
+					tc.initialSleep, tc.sleep, tc.timeoutSeconds, tc.expectedStatus, err)
+			}
+		})
+	}
+}
+
+func TestRevisionTimeoutFromZero(t *testing.T) {
+	t.Parallel()
+	clients := test.Setup(t)
+
+	testCases := []struct {
+		name           string
+		timeoutSeconds int64
+		initialSleep   time.Duration
+		sleep          time.Duration
+		expectedStatus int
+	}{{
+		name:           "it does not exceed timeout seconds",
+		timeoutSeconds: 40,
+		expectedStatus: http.StatusOK,
+	}, {
+		name:           "it writes first byte before timeout",
+		timeoutSeconds: 40,
+		sleep:          45 * time.Second,
+		expectedStatus: http.StatusOK,
+	}, {
+		name:           "it does exceed timeout seconds",
+		timeoutSeconds: 1, // If the pods come up faster than 1s, this test might fail.
+		expectedStatus: http.StatusGatewayTimeout,
+	}}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			names := test.ResourceNames{
+				Service: test.ObjectNameForTest(t),
+				Image:   test.Timeout,
+			}
+
+			test.EnsureTearDown(t, clients, names)
+
+			t.Log("Creating a new Service ")
+			resources, err := v1test.CreateServiceReady(t, clients, &names, WithRevisionTimeoutSeconds(tc.timeoutSeconds), WithReadinessProbe(&corev1.Probe{
+				Handler: corev1.Handler{
+								HTTPGet: &corev1.HTTPGetAction{
+													Path: "/",
+													InitialDelaySeconds: 5
+											},
+							}
+			})
+			if err != nil {
+				t.Fatal("Failed to create Service:", err)
+			}
+
+			serviceURL := resources.Service.Status.URL.URL()
+
+			t.Log("Waiting to scale down to 0")
+			if err := e2e.WaitForScaleToZero(t, resourcenames.Deployment(resources.Revision), clients); err != nil {
+				t.Fatal("Could not scale to zero:", err)
 			}
 
 			if err := sendRequest(t, clients, serviceURL, tc.initialSleep, tc.sleep, tc.expectedStatus); err != nil {
